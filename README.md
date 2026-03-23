@@ -1,134 +1,42 @@
-# LFHED-IA — Assistant Informatique 🎓
+# LFHED-IA v3 — Authentification locale @lfh.gr
 
-Assistant informatique intelligent pour le Lycée Français Hors d'Europe à Distance.  
-**Progressive Web App** — fonctionne sur Android, iPhone et ordinateur.
+Système d'inscription/connexion **100% hors-ligne**, sans serveur ni Firebase.
 
 ---
 
-## 🚀 Déploiement rapide sur GitHub Pages
+## ⚙️ Configuration rapide (`index.html`)
 
-### 1. Créer le dépôt
+```javascript
+const ALLOWED_DOMAIN = "lfh.gr";         // Domaine autorisé
+const ADMIN_USERS    = ["informatique"]; // Identifiant(s) admin
+const ADMIN_PIN      = "2025";          // ← CHANGEZ CE PIN
+const SESSION_MS     = 8 * 60 * 60 * 1000; // Session : 8h
+```
+
+## 🛡️ Compte admin pré-créé
+
+| Identifiant | Mot de passe initial | PIN Admin |
+|-------------|----------------------|-----------|
+| `informatique` | `Admin2025!` | `2025` |
+
+> ⚠️ Changez le mot de passe et le PIN au premier accès.
+
+## 👤 Fonctionnement
+
+- Seules les adresses **@lfh.gr** sont acceptées à l'inscription
+- Comptes stockés dans le localStorage de **chaque appareil**
+- Sessions expirent après 8h d'inactivité
+- Panneau Admin protégé par code PIN séparé
+
+## ⚠️ Limitation
+
+Les comptes sont locaux à chaque appareil.
+Un collègue doit s'inscrire sur chaque appareil qu'il utilise.
+
+## 🚀 Déploiement GitHub Pages
+
 ```bash
-git init
-git add .
-git commit -m "Initial commit — LFHED-IA v1.0"
-git branch -M main
-git remote add origin https://github.com/VOTRE-USERNAME/lfhed-ia.git
-git push -u origin main
+git add . && git commit -m "v3" && git push
 ```
+Settings → Pages → main / root → Save
 
-### 2. Activer GitHub Pages
-- Allez dans **Settings** → **Pages**
-- Source : **Deploy from a branch** → `main` → `/ (root)`
-- Cliquez **Save**
-- Votre app sera disponible sur : `https://VOTRE-USERNAME.github.io/lfhed-ia/`
-
-### 3. (Optionnel) Nom de domaine personnalisé
-Ajoutez un fichier `CNAME` avec votre domaine, ex : `ia.lfhed.edu`
-
----
-
-## 📱 Installation sur les appareils
-
-### iPhone / iPad (Safari)
-1. Ouvrir l'URL dans **Safari**
-2. Appuyer sur **Partager** (icône carrée avec flèche)
-3. Sélectionner **Sur l'écran d'accueil**
-4. L'icône LFHED-IA apparaît comme une vraie app
-
-### Android (Chrome)
-1. Ouvrir l'URL dans **Chrome**
-2. Un bandeau "Installer l'application" apparaît automatiquement
-3. Ou : menu ⋮ → **Ajouter à l'écran d'accueil**
-
----
-
-## ⚙️ Configuration de la clé API (pour les réponses IA)
-
-1. Créer un compte sur [console.anthropic.com](https://console.anthropic.com)
-2. Générer une clé API (commence par `sk-ant-...`)
-3. Dans l'application → **Paramètres** ⚙️ → **Clé API Anthropic**
-4. Coller la clé → **Enregistrer**
-
-> **Note sécurité** : La clé est stockée uniquement sur l'appareil de l'utilisateur (localStorage). Elle n'est jamais envoyée à un serveur tiers.
-
----
-
-## 🌐 Fonctionnement hors-ligne
-
-Sans connexion ou sans clé API, l'application utilise sa **base de connaissances locale** couvrant :
-
-| Catégorie | Problèmes couverts |
-|-----------|-------------------|
-| 🌐 Réseau & WiFi | WiFi lent, impossible de se connecter, sites bloqués |
-| 🖥️ Matériel | Imprimante hors ligne, ordinateur lent |
-| 💻 Logiciels | Pronote, Outlook/messagerie |
-| 📽️ Vidéo/Audio | Projecteur sans image, pas de son |
-
----
-
-## 🗂️ Structure du projet
-
-```
-lfhed-ia/
-├── index.html        ← Application principale (tout-en-un)
-├── manifest.json     ← Configuration PWA
-├── sw.js             ← Service Worker (cache hors-ligne)
-├── icons/            ← Icônes de l'application
-│   ├── icon-192.png
-│   └── icon-512.png
-└── README.md
-```
-
----
-
-## 🔧 Personnalisation
-
-### Ajouter des problèmes à la base de connaissances
-
-Dans `index.html`, modifiez l'objet `KB` :
-
-```javascript
-const KB = {
-  fr: {
-    network: [
-      {
-        id: 'mon-probleme',
-        emoji: '🔧',
-        title: 'Description du problème',
-        cat: 'Réseau',
-        steps: [
-          { text: 'Étape 1...', note: 'Note optionnelle' },
-          { text: 'Étape 2...', note: null },
-        ],
-        alts: ['Alternative 1', 'Alternative 2']
-      }
-    ]
-  }
-}
-```
-
-### Modifier les coordonnées du service informatique
-
-Recherchez `escalate()` dans `index.html` et modifiez :
-```javascript
-function escalate() {
-  showToast('📞 +XX XXX XXX XXXX — Votre message');
-}
-```
-
----
-
-## 🌍 Langues supportées
-
-- 🇫🇷 Français (défaut)
-- 🇬🇷 Grec (Ελληνικά)
-
-Pour ajouter une langue, ajoutez une entrée dans les objets `T` et `KB`.
-
----
-
-## 📄 Licence
-
-Usage interne — Lycée Français Hors d'Europe à Distance  
-Développé avec Claude AI (Anthropic)
