@@ -757,23 +757,6 @@ function openAdminGate() {
   setTimeout(() => document.getElementById('pinInput').focus(), 200);
 }
 function closeAdminGate() { document.getElementById('adminGate').classList.remove('show'); }
-document.getElementById('pinInput')?.addEventListener('keydown', e => { if (e.key === 'Enter') checkPin(); });
-
-function checkPin() {
-  const val = document.getElementById('pinInput').value;
-  if (val === ADMIN_PIN) {
-    closeAdminGate();
-    showScreen('admin');
-    loadAdmin();
-  } else {
-    const inp = document.getElementById('pinInput');
-    inp.classList.remove('shake');
-    void inp.offsetWidth;
-    inp.classList.add('shake');
-    document.getElementById('pinMsg').textContent = 'Code PIN incorrect';
-    inp.value = '';
-  }
-}
 
 // ══ ADMIN PANEL ══
 function loadAdmin() {
@@ -856,6 +839,9 @@ let historyData = JSON.parse(localStorage.getItem(LS.hist) || '[]');
 
 // ── Read overridden admin PIN if any
 if (localStorage.getItem('lfhed_admin_pin')) window.ADMIN_PIN_OVERRIDE = localStorage.getItem('lfhed_admin_pin');
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('pinInput')?.addEventListener('keydown', e => { if (e.key === 'Enter') checkPin(); });
+});
 function checkPin() {
   const val = document.getElementById('pinInput').value;
   const pin = window.ADMIN_PIN_OVERRIDE || ADMIN_PIN;
@@ -985,4 +971,8 @@ if (sess) {
 }
 // ── Pré-créer le compte admin s'il n'existe pas encore
 if (!getUser('informatique')) {
- 
+   setUser({ username:'informatique', name:'Administrateur', role:'admin', email:'informatique@lfh.gr', pwdHash: hashPwd('Admin2025!'), suspended:false, createdAt: new Date().toLocaleDateString('fr-FR') });
+}
+</script>
+</body>
+</html>
