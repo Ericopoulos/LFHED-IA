@@ -449,7 +449,7 @@ body{font-family:var(--font);background:var(--slate);color:var(--ink);min-height
 <!-- HOME -->
 <div class="screen active" id="sc-home">
   <div class="hero-band">
-    <div class="hero-eyebrow">🎓 Lycée Français Eugène Delacroix</div>
+    <div class="hero-eyebrow">🎓 Lycée Français Hors d'Europe</div>
     <h1 class="hero-h" id="heroH">Bonjour !</h1>
     <p class="hero-sub" id="heroSub">Choisissez une catégorie ou posez votre question</p>
     <p class="hero-meta" id="heroMeta"></p>
@@ -540,17 +540,17 @@ body{font-family:var(--font);background:var(--slate);color:var(--ink);min-height
 </nav>
 
 <!-- OVERLAYS -->
-<div class="overlay" id="catOverlay" onclick="closeCatSheet(event)"><div class="modal-sheet"><div class="sheet-handle"></div><div class="sheet-title" id="sheetTitle"></div><div class="sheet-list" id="sheetItems"></div></div></div>
-<div class="overlay" id="profileOverlay" onclick="closeOv('profileOverlay')"><div class="modal-sheet"><div class="sheet-handle"></div><div id="profileContent"></div></div></div>
+<div class="overlay" id="catOverlay" onclick="closeCatSheet(event)"><div class="modal-sheet" onclick="event.stopPropagation()"><div class="sheet-handle"></div><div class="sheet-title" id="sheetTitle"></div><div class="sheet-list" id="sheetItems"></div></div></div>
+<div class="overlay" id="profileOverlay" onclick="closeOv('profileOverlay')"><div class="modal-sheet" onclick="event.stopPropagation()"><div class="sheet-handle"></div><div id="profileContent"></div></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
 // ══════════════════════════════════════════════════
 //  CONFIGURATION SUPABASE — À REMPLIR
 // ══════════════════════════════════════════════════
-const SUPABASE_URL    = 'https://ojgrcrpmgbbgqdsxkqjr.supabase.co';  // ← Remplacez
-const SUPABASE_ANON   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qZ3JjcnBtZ2JiZ3Fkc3hrcWpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNDM2MzcsImV4cCI6MjA4OTkxOTYzN30.1r4XeHZxh9z9n1qFaP4d8Ptrg2HtNrWga3-ivyIqeLg';                   // ← Remplacez
-const SUPABASE_SERVICE= 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qZ3JjcnBtZ2JiZ3Fkc3hrcWpyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDM0MzYzNywiZXhwIjoyMDg5OTE5NjM3fQ.myCPhsciQsDoZocILzVGpHJP-Qyru8f6IXtlW_zIx18';           // ← Remplacez (pour admin)
+const SUPABASE_URL    = 'https://VOTRE-PROJET.supabase.co';  // ← Remplacez
+const SUPABASE_ANON   = 'VOTRE-ANON-KEY';                   // ← Remplacez
+const SUPABASE_SERVICE= 'VOTRE-SERVICE-ROLE-KEY';           // ← Remplacez (pour admin)
 const ADMIN_EMAILS    = ['informatique@lfh.gr'];             // ← Email(s) admin
 const DEFAULT_PWD     = 'Lfhed2025!';                       // ← Mot de passe par défaut (import CSV)
 
@@ -642,8 +642,8 @@ async function doReset() {
 async function doLogout() {
   await sb.auth.signOut();
   currentUser = null; currentProfile = null; isAdmin = false;
+  document.getElementById('nv-admin').style.display = 'none';
   showAuthWall();
-  showScreen('home');
 }
 
 function frErr(msg) {
@@ -897,8 +897,10 @@ async function addUser() {
       created_at: new Date().toISOString()
     });
 
-    // Send invite email (magic link)
-    await sbA.auth.admin.inviteUserByEmail(email);
+    // Envoyer un email de bienvenue avec lien de définition de mot de passe
+    await sbA.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + window.location.pathname
+    });
 
     msg.className = 'form-msg ok';
     msg.textContent = `✅ Compte créé ! Email de bienvenue envoyé à ${email}`;
