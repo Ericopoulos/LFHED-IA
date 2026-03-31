@@ -556,7 +556,11 @@ const DEFAULT_PWD     = 'Lfhed2025!';                       // ← Mot de passe 
 
 // ══════════════════════════════════════════════════
 const sb  = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
-const sbA = supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE); // admin operations
+// sbA uses service_role key — needed only for Realtime and direct table access bypassing RLS
+// auth.admin.* calls are replaced by RPC functions (SECURITY DEFINER) to avoid CORS blocks
+const sbA = supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE, {
+  auth: { autoRefreshToken: false, persistSession: false }
+});
 
 let currentUser = null, currentProfile = null, isAdmin = false;
 
@@ -837,19 +841,27 @@ async function adminAction(uid, action) {
   if (action === 'delete' && !confirm('Supprimer définitivement cet utilisateur ?')) return;
   try {
     if (action === 'suspend') {
-      await sbA.from('profiles').update({ suspended: true }).eq('id', uid);
+      const { error } = await sbA.from('profiles').update({ suspended: true }).eq('id', uid);
+      if (error) throw error;
       showToast('⏸ Compte suspendu');
     } else if (action === 'restore') {
-      await sbA.from('profiles').update({ suspended: false }).eq('id', uid);
+      const { error } = await sbA.from('profiles').update({ suspended: false }).eq('id', uid);
+      if (error) throw error;
       showToast('✅ Compte réactivé');
     } else if (action === 'reset') {
-      // Force password reset on next login
+      // Via RPC — évite l'appel auth.admin.* bloqué par CORS
+      const { data: profileData } = await sbA.from('profiles').select('email').eq('id', uid).single();
       await sbA.from('profiles').update({ must_change_pwd: true }).eq('id', uid);
-      await sbA.auth.admin.updateUserById(uid, { password: DEFAULT_PWD });
-      showToast('🔑 Mot de passe réinitialisé à ' + DEFAULT_PWD);
+      if (profileData?.email) {
+        await sb.auth.resetPasswordForEmail(profileData.email, { redirectTo: window.location.href });
+      }
+      showToast('🔑 Email de réinitialisation envoyé');
     } else if (action === 'delete') {
-      await sbA.auth.admin.deleteUser(uid);
-      await sbA.from('profiles').delete().eq('id', uid);
+      // Supprime le profil (la cascade supprime l'auth user si FK configurée)
+      const { error } = await sbA.from('profiles').delete().eq('id', uid);
+      if (error) throw error;
+      // Supprime aussi via RPC admin_delete_user si disponible
+      await sbA.rpc('admin_delete_user', { user_id: uid }).catch(() => {});
       document.getElementById('uc-' + uid)?.remove();
       showToast('🗑 Utilisateur supprimé');
       return;
@@ -882,25 +894,18 @@ async function addUser() {
   msg.className = 'form-msg'; msg.textContent = '';
 
   try {
-    // Create user with Supabase Admin API
-    const { data, error } = await sbA.auth.admin.createUser({
-      email, password: DEFAULT_PWD,
-      email_confirm: true,   // auto-confirm email
-      user_metadata: { prenom, nom, role }
+    // RPC admin_create_user — évite le blocage CORS de auth.admin.createUser
+    const { error: rpcErr } = await sbA.rpc('admin_create_user', {
+      p_email: email,
+      p_password: DEFAULT_PWD,
+      p_prenom: prenom,
+      p_nom: nom,
+      p_role: role
     });
-    if (error) throw error;
+    if (rpcErr) throw rpcErr;
 
-    // Create profile
-    await sbA.from('profiles').insert({
-      id: data.user.id, prenom, nom, email, role,
-      suspended: false, must_change_pwd: true,
-      created_at: new Date().toISOString()
-    });
-
-    // Envoyer un email de bienvenue avec lien de définition de mot de passe
-    await sbA.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + window.location.pathname
-    });
+    // Email de bienvenue = lien de définition du mot de passe
+    await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.href });
 
     msg.className = 'form-msg ok';
     msg.textContent = `✅ Compte créé ! Email de bienvenue envoyé à ${email}`;
@@ -910,9 +915,9 @@ async function addUser() {
     loadAdmin();
   } catch(e) {
     msg.className = 'form-msg err';
-    msg.textContent = '⚠️ ' + (e.message.includes('already') ? 'Cet email est déjà utilisé' : e.message);
+    msg.textContent = '⚠️ ' + (e.message.includes('already') || e.message.includes('existe') || e.code === '23505' ? 'Cet email est déjà utilisé' : e.message);
   }
-  btn.disabled = false; btn.textContent = 'Créer le compte et envoyer l\'invitation';
+  btn.disabled = false; btn.textContent = "Créer le compte et envoyer l'invitation";
 }
 
 // ══ CSV IMPORT ══
@@ -967,21 +972,18 @@ async function importCSV() {
     txt.textContent = `${i + 1} / ${csvRows.length} — ✅ ${ok} importés, ⏭ ${skip} ignorés, ⚠️ ${fail} erreurs`;
 
     try {
-      const { data, error } = await sbA.auth.admin.createUser({
-        email, password: DEFAULT_PWD,
-        email_confirm: true,
-        user_metadata: { prenom, nom, role }
+      const { error: rpcErr } = await sbA.rpc('admin_create_user', {
+        p_email: email,
+        p_password: DEFAULT_PWD,
+        p_prenom: prenom,
+        p_nom: nom,
+        p_role: role
       });
-      if (error) {
-        if (error.message.includes('already')) skip++;
-        else { fail++; console.warn('Import error:', email, error.message); }
+      if (rpcErr) {
+        if (rpcErr.message.includes('already') || rpcErr.message.includes('existe') || rpcErr.code === '23505') skip++;
+        else { fail++; console.warn('Import error:', email, rpcErr.message); }
         continue;
       }
-      await sbA.from('profiles').upsert({
-        id: data.user.id, prenom, nom, email, role,
-        suspended: false, must_change_pwd: true,
-        created_at: new Date().toISOString()
-      });
       ok++;
     } catch(e) { fail++; }
 
